@@ -81,10 +81,10 @@ func handler(conn net.Conn, gm *GameManager, config *ssh.ServerConfig) {
 	}
 }
 
-func readWriterToFileDescriptors(channel) (*os.File, *os.File, error) {
+func readWriterToFileDescriptors(channel ssh.Channel) (*os.File, *os.File, error) {
 	outFileReader, outFileWriter, err := os.Pipe()
 	if err != nil {
-		return nil.nil, err
+		return nil, nil, err
 	}
 
 	inFileReader, inFileWriter, err := os.Pipe()
@@ -143,8 +143,11 @@ func main() {
 
 	if singlePlayer {
 		gm := NewGameManager()
-		tc := NewTermChannel()
-		gm.HandleChannel(tc, true)
+		s, err := gc.NewTerm("xterm", os.Stdout, os.Stdin)
+		if err != nil {
+			panic("failed to create local terminal")
+		}
+		gm.HandleChannel(s, true)
 	} else {
 
 		sshPort := port(sshPortOpt, sshPortEnv, defaultSshPort)

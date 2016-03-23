@@ -3,11 +3,11 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"math/rand"
 	"sort"
 	"time"
 
+	gc "github.com/dragonfax/goncurses"
 	"github.com/dustinkirkland/golang-petname"
 	"github.com/fatih/color"
 )
@@ -516,7 +516,7 @@ func (g *Game) Update(delta float64) {
 
 		// Kick the player if they've timed out
 		if time.Now().Sub(player.LastAction) > playerTimeout {
-			fmt.Fprint(session, "\r\n\r\nYou were terminated due to inactivity\r\n")
+			session.win.Printf("\r\n\r\nYou were terminated due to inactivity\r\n")
 			g.RemoveSession(session)
 			return
 		}
@@ -539,29 +539,38 @@ func (g *Game) Update(delta float64) {
 func (g *Game) Render(s *Session) {
 	worldStr := g.worldString(s)
 
-	var b bytes.Buffer
-	b.WriteString("\033[H\033[2J")
-	b.WriteString(worldStr)
-
+	// TODO
+	//var b bytes.Buffer
+	// b.WriteString("\033[H\033[2J")
+	// b.WriteString(worldStr)
 	// Send over the rendered world
-	io.Copy(s, &b)
+	// io.Copy(s, &b)
+
+	s.win.Move(0, 0)
+	for _, c := range worldStr {
+		s.win.AddChar(gc.Char(c))
+	}
+
+	s.win.Refresh()
 }
 
 func (g *Game) AddSession(s *Session) {
 	// Hide the cursor
-	fmt.Fprint(s, "\033[?25l")
+	// TODO fmt.Fprint(s, "\033[?25l")
+
+	s.c.Cbreak()
 
 	g.Sessions[s] = struct{}{}
 }
 
 func (g *Game) RemoveSession(s *Session) {
 	if _, ok := g.Sessions[s]; ok {
-		fmt.Fprint(s, "\r\n\r\n~ End of Line ~ \r\n\r\nRemember to use WASD to move!\r\n\r\n")
+		s.win.Printf("\r\n\r\n~ End of Line ~ \r\n\r\nRemember to use WASD to move!\r\n\r\n")
 
 		// Unhide the cursor
-		fmt.Fprint(s, "\033[?25h")
+		// TODO fmt.Fprint(s, "\033[?25h")
 
 		delete(g.Sessions, s)
-		s.c.Close()
+		// TODO s.c.Close()
 	}
 }

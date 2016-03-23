@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 
 	gc "github.com/dragonfax/goncurses"
 	"github.com/fatih/color"
@@ -79,20 +78,22 @@ func (gm *GameManager) HandleChannel(c *gc.Screen, wait bool) {
 
 	session := NewSession(c, g.WorldWidth(), g.WorldHeight(),
 		g.AvailableColors()[0])
-	g.AddSession(session)
-	defer g.RemoveSession(session)
 
-	window, err := NewWindowSP(c, 0, 0, 0, 0)
+	window, err := gc.NewWindowSP(c, 0, 0, 0, 0)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	session.win = window
+
+	g.AddSession(session)
+	defer g.RemoveSession(session)
 
 	handleSession := func() {
 		for {
-			r, err := window.GetCh()
-			if err != nil {
-				fmt.Println(err)
+			r := window.GetChar()
+			if r == 0 {
+				fmt.Println("error reading key from window")
 				break
 			}
 
@@ -121,7 +122,8 @@ func (gm *GameManager) HandleChannel(c *gc.Screen, wait bool) {
 }
 
 type Session struct {
-	c io.ReadWriteCloser
+	c   *gc.Screen
+	win *gc.Window
 
 	Player *Player
 }
@@ -141,12 +143,4 @@ func (s *Session) newGame(worldWidth, worldHeight int, color color.Attribute) {
 
 func (s *Session) StartOver(worldWidth, worldHeight int) {
 	s.newGame(worldWidth, worldHeight, s.Player.Color)
-}
-
-func (s *Session) Read(p []byte) (int, error) {
-	return s.c.Read(p)
-}
-
-func (s *Session) Write(p []byte) (int, error) {
-	return s.c.Write(p)
 }
