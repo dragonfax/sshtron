@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 
 	gc "github.com/dragonfax/goncurses"
 	"github.com/fatih/color"
@@ -67,6 +68,8 @@ const (
 	keyEscape = 27
 )
 
+var mutex = &sync.Mutex{}
+
 func (gm *GameManager) HandleChannel(c *gc.Screen, wait bool) {
 	g := gm.getGameWithAvailability()
 	if g == nil {
@@ -90,10 +93,15 @@ func (gm *GameManager) HandleChannel(c *gc.Screen, wait bool) {
 
 	handleSession := func() {
 		for {
+			mutex.Lock()
+
+			session.c.Set()
+
 			r := window.GetChar()
 			if r == 0 {
 				fmt.Println("error reading key from window")
-				break
+				mutex.Unlock()
+				continue
 			}
 
 			switch r {
@@ -110,6 +118,8 @@ func (gm *GameManager) HandleChannel(c *gc.Screen, wait bool) {
 					delete(gm.Games, g.Name)
 				}
 			}
+
+			mutex.Unlock()
 		}
 		g.RemoveSession(session)
 	}

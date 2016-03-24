@@ -150,11 +150,13 @@ func port(opt, env, def string) string {
 
 func main() {
 
-	_, err := gc.Init()
-	if err != nil {
-		panic(err)
-	}
-	defer gc.End()
+	/*
+		_, err := gc.Init()
+		if err != nil {
+			panic(err)
+		}
+		defer gc.End()
+	*/
 
 	var sshPortOpt string
 	var httpPortOpt string

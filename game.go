@@ -574,6 +574,8 @@ func (g *Game) Update(delta float64) {
 
 func (g *Game) Render(s *Session) {
 
+	s.c.Set()
+
 	s.win.Move(0, 0)
 
 	g.worldString(s)
