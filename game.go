@@ -318,29 +318,29 @@ func (g *Game) worldString(s *Session) {
 	for x := 0; x < worldWidth+2; x++ {
 		// strWorld[x][0] = borderColorizer(string(horizontalWall))
 		ch := borderColorizer(horizontalWall)
-		s.win.MoveAddChar(x, 0, ch)
+		s.win.MoveAddChar(0, x, ch)
 		// strWorld[x][worldHeight+1] = borderColorizer(string(horizontalWall))
 		ch = borderColorizer(horizontalWall)
-		s.win.MoveAddChar(x, worldHeight+1, ch)
+		s.win.MoveAddChar(worldHeight+1, x, ch)
 	}
 	for y := 0; y < worldHeight+2; y++ {
 		// strWorld[0][y] = borderColorizer(string(verticalWall))
 		ch := borderColorizer(verticalWall)
-		s.win.MoveAddChar(0, y, ch)
+		s.win.MoveAddChar(y, 0, ch)
 		// strWorld[worldWidth+1][y] = borderColorizer(string(verticalWall))
 		ch = borderColorizer(verticalWall)
-		s.win.MoveAddChar(worldWidth+1, y, ch)
+		s.win.MoveAddChar(y, worldWidth+1, ch)
 	}
 
 	// Time for the edges!
 	// strWorld[0][0] = borderColorizer(string(topLeft))
 	s.win.MoveAddChar(0, 0, borderColorizer(topLeft))
 	// strWorld[worldWidth+1][0] = borderColorizer(string(topRight))
-	s.win.MoveAddChar(worldWidth+1, 0, borderColorizer(topRight))
+	s.win.MoveAddChar(0, worldWidth+1, borderColorizer(topRight))
 	// strWorld[worldWidth+1][worldHeight+1] = borderColorizer(string(bottomRight))
-	s.win.MoveAddChar(worldWidth+1, worldHeight+1, borderColorizer(bottomRight))
+	s.win.MoveAddChar(worldHeight+1, worldWidth+1, borderColorizer(bottomRight))
 	// strWorld[0][worldHeight+1] = borderColorizer(string(bottomLeft))
-	s.win.MoveAddChar(0, worldHeight+1, borderColorizer(bottomLeft))
+	s.win.MoveAddChar(worldHeight+1, 0, borderColorizer(bottomLeft))
 
 	// Draw the player's score
 	scoreStr := fmt.Sprintf(
@@ -354,7 +354,7 @@ func (g *Game) worldString(s *Session) {
 			strWorld[3+i][0] = borderColorizer(string(r))
 		}
 	*/
-	s.win.MovePrint(3, 0, scoreStr)
+	s.win.MovePrint(0, 3, scoreStr)
 
 	// Draw the player's color
 	/*
@@ -423,7 +423,7 @@ func (g *Game) worldString(s *Session) {
 	for x := 1; x <= worldWidth; x++ {
 		for y := 1; y <= worldHeight; y++ {
 			// strWorld[x][y] = " "
-			s.win.MoveAddChar(x, y, ' ')
+			s.win.MoveAddChar(y, x, ' ')
 		}
 	}
 
@@ -436,13 +436,13 @@ func (g *Game) worldString(s *Session) {
 
 		pos := player.Pos
 		// strWorld[pos.RoundX()+1][pos.RoundY()+1] = colorizer(string(player.Marker))
-		s.win.MoveAddChar(pos.RoundX()+1, pos.RoundY()+1, colorizer(player.Marker))
+		s.win.MoveAddChar(pos.RoundY()+1, pos.RoundX()+1, colorizer(player.Marker))
 
 		// Load the player's trail into the rune slice
 		for _, segment := range player.Trail {
 			x, y := segment.Pos.RoundX()+1, segment.Pos.RoundY()+1
 			// strWorld[x][y] = colorizer(string(segment.Marker))
-			s.win.MoveAddChar(x, y, colorizer(segment.Marker))
+			s.win.MoveAddChar(y, x, colorizer(segment.Marker))
 		}
 	}
 
