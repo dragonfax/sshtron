@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
-	"sort"
 	"time"
 
 	gc "github.com/dragonfax/goncurses"
@@ -298,33 +296,51 @@ const (
 )
 
 // Warning: this will only work with square worlds
-func (g *Game) worldString(s *Session) string {
+func (g *Game) worldString(s *Session) {
 	worldWidth := g.WorldWidth()
 	worldHeight := g.WorldHeight()
 
 	// Create two dimensional slice of strings to represent the world. It's two
 	// characters larger in each direction to accomodate for walls.
-	strWorld := make([][]string, worldWidth+2)
-	for x := range strWorld {
-		strWorld[x] = make([]string, worldHeight+2)
+	/*
+		strWorld := make([][]string, worldWidth+2)
+		for x := range strWorld {
+			strWorld[x] = make([]string, worldHeight+2)
+		}
+	*/
+
+	borderColorizer := func(r rune) gc.Char {
+		return gc.Char(r)
 	}
 
 	// Load the walls into the rune slice
-	borderColorizer := color.New(playerBorderColors[s.Player.Color]).SprintFunc()
+	// borderColorizer := color.New(playerBorderColors[s.Player.Color]).SprintFunc()
 	for x := 0; x < worldWidth+2; x++ {
-		strWorld[x][0] = borderColorizer(string(horizontalWall))
-		strWorld[x][worldHeight+1] = borderColorizer(string(horizontalWall))
+		// strWorld[x][0] = borderColorizer(string(horizontalWall))
+		ch := borderColorizer(horizontalWall)
+		s.win.MoveAddChar(x, 0, ch)
+		// strWorld[x][worldHeight+1] = borderColorizer(string(horizontalWall))
+		ch = borderColorizer(horizontalWall)
+		s.win.MoveAddChar(x, worldHeight+1, ch)
 	}
 	for y := 0; y < worldHeight+2; y++ {
-		strWorld[0][y] = borderColorizer(string(verticalWall))
-		strWorld[worldWidth+1][y] = borderColorizer(string(verticalWall))
+		// strWorld[0][y] = borderColorizer(string(verticalWall))
+		ch := borderColorizer(verticalWall)
+		s.win.MoveAddChar(0, y, ch)
+		// strWorld[worldWidth+1][y] = borderColorizer(string(verticalWall))
+		ch = borderColorizer(verticalWall)
+		s.win.MoveAddChar(worldWidth+1, y, ch)
 	}
 
 	// Time for the edges!
-	strWorld[0][0] = borderColorizer(string(topLeft))
-	strWorld[worldWidth+1][0] = borderColorizer(string(topRight))
-	strWorld[worldWidth+1][worldHeight+1] = borderColorizer(string(bottomRight))
-	strWorld[0][worldHeight+1] = borderColorizer(string(bottomLeft))
+	// strWorld[0][0] = borderColorizer(string(topLeft))
+	s.win.MoveAddChar(0, 0, borderColorizer(topLeft))
+	// strWorld[worldWidth+1][0] = borderColorizer(string(topRight))
+	s.win.MoveAddChar(worldWidth+1, 0, borderColorizer(topRight))
+	// strWorld[worldWidth+1][worldHeight+1] = borderColorizer(string(bottomRight))
+	s.win.MoveAddChar(worldWidth+1, worldHeight+1, borderColorizer(bottomRight))
+	// strWorld[0][worldHeight+1] = borderColorizer(string(bottomLeft))
+	s.win.MoveAddChar(0, worldHeight+1, borderColorizer(bottomLeft))
 
 	// Draw the player's score
 	scoreStr := fmt.Sprintf(
@@ -333,99 +349,119 @@ func (g *Game) worldString(s *Session) string {
 		s.Player.HighScore,
 		g.HighScore,
 	)
-	for i, r := range scoreStr {
-		strWorld[3+i][0] = borderColorizer(string(r))
-	}
+	/*
+		for i, r := range scoreStr {
+			strWorld[3+i][0] = borderColorizer(string(r))
+		}
+	*/
+	s.win.MovePrint(3, 0, scoreStr)
 
 	// Draw the player's color
-	colorStr := fmt.Sprintf(" %s ", playerColorNames[s.Player.Color])
-	colorStrColorizer := color.New(s.Player.Color).SprintFunc()
-	for i, r := range colorStr {
-		charsRemaining := len(colorStr) - i
-		strWorld[len(strWorld)-3-charsRemaining][0] = colorStrColorizer(string(r))
-	}
+	/*
+		TODO
+		colorStr := fmt.Sprintf(" %s ", playerColorNames[s.Player.Color])
+		colorStrColorizer := color.New(s.Player.Color).SprintFunc()
+		for i, r := range colorStr {
+			charsRemaining := len(colorStr) - i
+			strWorld[len(strWorld)-3-charsRemaining][0] = colorStrColorizer(string(r))
+		}
+	*/
 
 	// Draw everyone's scores
-	if len(g.players()) > 1 {
-		// Sort the players by color name
-		players := []*Player{}
+	/*
+		TODO
+		if len(g.players()) > 1 {
+			// Sort the players by color name
+			players := []*Player{}
 
-		for player := range g.players() {
-			if player == s.Player {
-				continue
+			for player := range g.players() {
+				if player == s.Player {
+					continue
+				}
+
+				players = append(players, player)
 			}
 
-			players = append(players, player)
-		}
+			sort.Sort(ByColor(players))
+			startX := 3
 
-		sort.Sort(ByColor(players))
-		startX := 3
+			// Actually draw their scores
+			for _, player := range players {
+				colorizer := color.New(player.Color).SprintFunc()
+				scoreStr := fmt.Sprintf(" %s: %d",
+					playerColorNames[player.Color],
+					player.Score(),
+				)
+				for _, r := range scoreStr {
+					strWorld[startX][len(strWorld[0])-1] = colorizer(string(r))
+					startX++
+				}
+			}
 
-		// Actually draw their scores
-		for _, player := range players {
-			colorizer := color.New(player.Color).SprintFunc()
-			scoreStr := fmt.Sprintf(" %s: %d",
-				playerColorNames[player.Color],
-				player.Score(),
-			)
-			for _, r := range scoreStr {
-				strWorld[startX][len(strWorld[0])-1] = colorizer(string(r))
-				startX++
+			// Add final spacing next to wall
+			strWorld[startX][len(strWorld[0])-1] = " "
+		} else {
+			warning :=
+				" Warning: Other Players Must be in This Game for You to Score! "
+			for i, r := range warning {
+				strWorld[3+i][len(strWorld[0])-1] = borderColorizer(string(r))
 			}
 		}
-
-		// Add final spacing next to wall
-		strWorld[startX][len(strWorld[0])-1] = " "
-	} else {
-		warning :=
-			" Warning: Other Players Must be in This Game for You to Score! "
-		for i, r := range warning {
-			strWorld[3+i][len(strWorld[0])-1] = borderColorizer(string(r))
-		}
-	}
+	*/
 
 	// Draw the game's name
-	nameStr := fmt.Sprintf(" %s ", g.Name)
-	for i, r := range nameStr {
-		charsRemaining := len(nameStr) - i
-		strWorld[len(strWorld)-3-charsRemaining][len(strWorld[0])-1] =
-			borderColorizer(string(r))
-	}
+	/*
+		TODO
+		nameStr := fmt.Sprintf(" %s ", g.Name)
+		for i, r := range nameStr {
+			charsRemaining := len(nameStr) - i
+			strWorld[len(strWorld)-3-charsRemaining][len(strWorld[0])-1] =
+				borderColorizer(string(r))
+		}
+	*/
 
 	for x := 1; x <= worldWidth; x++ {
 		for y := 1; y <= worldHeight; y++ {
-			strWorld[x][y] = " "
+			// strWorld[x][y] = " "
+			s.win.MoveAddChar(x, y, ' ')
 		}
 	}
 
 	// Load the players into the rune slice
 	for player := range g.players() {
-		colorizer := color.New(player.Color).SprintFunc()
+		// colorizer := color.New(player.Color).SprintFunc()
+		colorizer := func(r rune) gc.Char {
+			return gc.Char(r)
+		}
 
 		pos := player.Pos
-		strWorld[pos.RoundX()+1][pos.RoundY()+1] = colorizer(string(player.Marker))
+		// strWorld[pos.RoundX()+1][pos.RoundY()+1] = colorizer(string(player.Marker))
+		s.win.MoveAddChar(pos.RoundX()+1, pos.RoundY()+1, colorizer(player.Marker))
 
 		// Load the player's trail into the rune slice
 		for _, segment := range player.Trail {
 			x, y := segment.Pos.RoundX()+1, segment.Pos.RoundY()+1
-			strWorld[x][y] = colorizer(string(segment.Marker))
+			// strWorld[x][y] = colorizer(string(segment.Marker))
+			s.win.MoveAddChar(x, y, colorizer(segment.Marker))
 		}
 	}
 
 	// Convert the rune slice to a string
-	buffer := bytes.NewBuffer(make([]byte, 0, worldWidth*worldHeight*2))
-	for y := 0; y < len(strWorld[0]); y++ {
-		for x := 0; x < len(strWorld); x++ {
-			buffer.WriteString(strWorld[x][y])
-		}
+	/*
+		buffer := bytes.NewBuffer(make([]byte, 0, worldWidth*worldHeight*2))
+		for y := 0; y < len(strWorld[0]); y++ {
+			for x := 0; x < len(strWorld); x++ {
+				buffer.WriteString(strWorld[x][y])
+			}
 
-		// Don't add an extra newline if we're on the last iteration
-		if y != len(strWorld[0])-1 {
-			buffer.WriteString("\r\n")
+			// Don't add an extra newline if we're on the last iteration
+			if y != len(strWorld[0])-1 {
+				buffer.WriteString("\r\n")
+			}
 		}
-	}
+	*/
 
-	return buffer.String()
+	// return buffer.String()
 }
 
 func (g *Game) WorldWidth() int {
@@ -537,7 +573,10 @@ func (g *Game) Update(delta float64) {
 }
 
 func (g *Game) Render(s *Session) {
-	worldStr := g.worldString(s)
+
+	s.win.Move(0, 0)
+
+	g.worldString(s)
 
 	// TODO
 	//var b bytes.Buffer
@@ -546,10 +585,14 @@ func (g *Game) Render(s *Session) {
 	// Send over the rendered world
 	// io.Copy(s, &b)
 
-	s.win.Move(0, 0)
-	for _, c := range worldStr {
-		s.win.AddChar(gc.Char(c))
-	}
+	/*
+		for _, c := range worldStr {
+			err := s.win.AddChar(c)
+			if err != nil {
+				break
+			}
+		}
+	*/
 
 	s.win.Refresh()
 }
