@@ -87,7 +87,6 @@ func (gm *GameManager) HandleChannel(c *gc.Screen, wait bool) {
 	session.win = window
 
 	g.AddSession(session)
-	defer g.RemoveSession(session)
 
 	handleSession := func() {
 		for {
@@ -112,6 +111,7 @@ func (gm *GameManager) HandleChannel(c *gc.Screen, wait bool) {
 				}
 			}
 		}
+		g.RemoveSession(session)
 	}
 
 	if wait {
