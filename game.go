@@ -35,17 +35,17 @@ const (
 	playerCountScoreMultiplier = 1.25
 	playerTimeout              = 15 * time.Second
 
-	playerUpRune    = '⇡'
-	playerLeftRune  = '⇠'
-	playerDownRune  = '⇣'
-	playerRightRune = '⇢'
+	playerUpRune    = gc.ACS_UARROW
+	playerLeftRune  = gc.ACS_LARROW
+	playerDownRune  = gc.ACS_DARROW
+	playerRightRune = gc.ACS_RARROW
 
-	playerTrailHorizontal      = '┄'
-	playerTrailVertical        = '┆'
-	playerTrailLeftCornerUp    = '╭'
-	playerTrailLeftCornerDown  = '╰'
-	playerTrailRightCornerDown = '╯'
-	playerTrailRightCornerUp   = '╮'
+	playerTrailHorizontal      = gc.ACS_HLINE
+	playerTrailVertical        = gc.ACS_VLINE
+	playerTrailLeftCornerUp    = gc.ACS_ULCORNER
+	playerTrailLeftCornerDown  = gc.ACS_LLCORNER
+	playerTrailRightCornerDown = gc.ACS_LRCORNER
+	playerTrailRightCornerUp   = gc.ACS_URCORNER
 
 	playerRed     = color.FgRed
 	playerGreen   = color.FgGreen
@@ -76,7 +76,7 @@ var playerColorNames = map[color.Attribute]string{
 }
 
 type PlayerTrailSegment struct {
-	Marker rune
+	Marker gc.Char
 	Pos    Position
 }
 
@@ -85,7 +85,7 @@ type Player struct {
 
 	CreatedAt  time.Time
 	Direction  PlayerDirection
-	Marker     rune
+	Marker     gc.Char
 	LastAction time.Time
 	Color      color.Attribute
 	Pos        *Position
@@ -120,7 +120,7 @@ func NewPlayer(s *Session, worldWidth, worldHeight int,
 	}
 }
 
-func (p *Player) addTrailSegment(pos Position, marker rune) {
+func (p *Player) addTrailSegment(pos Position, marker gc.Char) {
 	segment := PlayerTrailSegment{marker, pos}
 	p.Trail = append([]PlayerTrailSegment{segment}, p.Trail...)
 }
@@ -287,12 +287,12 @@ func (g *Game) players() map[*Player]*Session {
 
 // Characters for rendering
 const (
-	verticalWall   = '║'
-	horizontalWall = '═'
-	topLeft        = '╔'
-	topRight       = '╗'
-	bottomRight    = '╝'
-	bottomLeft     = '╚'
+	verticalWall   = gc.ACS_VLINE
+	horizontalWall = gc.ACS_HLINE
+	topLeft        = gc.ACS_ULCORNER
+	topRight       = gc.ACS_URCORNER
+	bottomRight    = gc.ACS_LRCORNER
+	bottomLeft     = gc.ACS_LLCORNER
 )
 
 // Warning: this will only work with square worlds
@@ -309,8 +309,8 @@ func (g *Game) worldString(s *Session) {
 		}
 	*/
 
-	borderColorizer := func(r rune) gc.Char {
-		return gc.Char(r)
+	borderColorizer := func(r gc.Char) gc.Char {
+		return r
 	}
 
 	// Load the walls into the rune slice
@@ -430,8 +430,8 @@ func (g *Game) worldString(s *Session) {
 	// Load the players into the rune slice
 	for player := range g.players() {
 		// colorizer := color.New(player.Color).SprintFunc()
-		colorizer := func(r rune) gc.Char {
-			return gc.Char(r)
+		colorizer := func(r gc.Char) gc.Char {
+			return r
 		}
 
 		pos := player.Pos
