@@ -69,46 +69,69 @@ func handler(conn net.Conn, gm *GameManager, config *ssh.ServerConfig) {
 			}
 		}(requests)
 
-		outFileWriter, inFileReader, err := readWriterToFileDescriptors(channel)
+		writer, reader, err := sshChannelToFileDescriptors(channel)
+		if err != nil {
+			fmt.Println("failed to make file descriptions for the ssh.Channel ", err)
+			return
+		}
 
-		screen, err := gc.NewTerm("xterm", outFileWriter, inFileReader)
+		screen, err := gc.NewTerm("xterm", writer, reader)
 		if err != nil {
 			fmt.Println("failed to start new curses terminal", err)
 			return
 		}
+		fmt.Println("started new curses terminal")
 
 		gm.HandleChannel(screen, false)
 	}
 }
 
-func readWriterToFileDescriptors(channel ssh.Channel) (*os.File, *os.File, error) {
-	outFileReader, outFileWriter, err := os.Pipe()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	inFileReader, inFileWriter, err := os.Pipe()
+func sshChannelToFileDescriptors(channel ssh.Channel) (stdoutWriter *os.File, stdinReader *os.File, err error) {
+	stdoutReader, stdoutWriter, err := os.Pipe()
 	if err != nil {
 		return nil, nil, err
 	}
 
 	go func() {
-		b := make([]byte, 1, 1)
+		b := make([]byte, 1024)
 		for {
-			channel.Read(b)
-			inFileWriter.Write(b)
+
+			n, err := stdoutReader.Read(b)
+			if err != nil {
+				fmt.Println("reading from stdout stopped")
+				break
+			}
+
+			n, err = channel.Write(b[0:n])
+			if err != nil {
+				fmt.Println("writing to the channel, stopped")
+				break
+			}
 		}
 	}()
+
+	stdinReader, stdinWriter, err := os.Pipe()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	go func() {
-		b := make([]byte, 1, 1)
+		b := make([]byte, 1024)
 		for {
-			outFileReader.Read(b)
-			channel.Write(b)
+			n, err := channel.Read(b)
+			if err != nil {
+				fmt.Println("reading from the channel, stopped")
+				break
+			}
+
+			n, err = stdinWriter.Write(b[0:n])
+			if err != nil {
+				fmt.Println("writing to stdin stopped")
+			}
 		}
 	}()
 
-	return outFileWriter, inFileReader, nil
+	return stdoutWriter, stdinReader, nil
 }
 
 func port(opt, env, def string) string {
