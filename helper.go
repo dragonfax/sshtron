@@ -1,10 +1,10 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io"
+	"sync"
 
+	gc "github.com/dragonfax/goncurses"
 	"github.com/fatih/color"
 )
 
@@ -68,7 +68,9 @@ const (
 	keyEscape = 27
 )
 
-func (gm *GameManager) HandleChannel(c io.ReadWriteCloser, wait bool) {
+var mutex = &sync.Mutex{}
+
+func (gm *GameManager) HandleChannel(c *gc.Screen, wait bool) {
 	g := gm.getGameWithAvailability()
 	if g == nil {
 		g = NewGame(gameWidth, gameHeight)
@@ -79,15 +81,27 @@ func (gm *GameManager) HandleChannel(c io.ReadWriteCloser, wait bool) {
 
 	session := NewSession(c, g.WorldWidth(), g.WorldHeight(),
 		g.AvailableColors()[0])
+
+	window, err := gc.NewWindowSP(c, 0, 0, 0, 0)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	session.win = window
+
 	g.AddSession(session)
 
 	handleSession := func() {
-		reader := bufio.NewReader(c)
 		for {
-			r, _, err := reader.ReadRune()
-			if err != nil {
-				fmt.Println(err)
-				break
+			mutex.Lock()
+
+			session.c.Set()
+
+			r := window.GetChar()
+			if r == 0 {
+				fmt.Println("error reading key from window")
+				mutex.Unlock()
+				continue
 			}
 
 			switch r {
@@ -103,10 +117,11 @@ func (gm *GameManager) HandleChannel(c io.ReadWriteCloser, wait bool) {
 				if g.SessionCount() == 1 {
 					delete(gm.Games, g.Name)
 				}
-
-				g.RemoveSession(session)
 			}
+
+			mutex.Unlock()
 		}
+		g.RemoveSession(session)
 	}
 
 	if wait {
@@ -117,12 +132,13 @@ func (gm *GameManager) HandleChannel(c io.ReadWriteCloser, wait bool) {
 }
 
 type Session struct {
-	c io.ReadWriteCloser
+	c   *gc.Screen
+	win *gc.Window
 
 	Player *Player
 }
 
-func NewSession(c io.ReadWriteCloser, worldWidth, worldHeight int,
+func NewSession(c *gc.Screen, worldWidth, worldHeight int,
 	color color.Attribute) *Session {
 
 	s := Session{c: c}
@@ -137,12 +153,4 @@ func (s *Session) newGame(worldWidth, worldHeight int, color color.Attribute) {
 
 func (s *Session) StartOver(worldWidth, worldHeight int) {
 	s.newGame(worldWidth, worldHeight, s.Player.Color)
-}
-
-func (s *Session) Read(p []byte) (int, error) {
-	return s.c.Read(p)
-}
-
-func (s *Session) Write(p []byte) (int, error) {
-	return s.c.Write(p)
 }

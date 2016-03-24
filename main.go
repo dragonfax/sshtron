@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 
+	gc "github.com/dragonfax/goncurses"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -68,8 +69,69 @@ func handler(conn net.Conn, gm *GameManager, config *ssh.ServerConfig) {
 			}
 		}(requests)
 
-		gm.HandleChannel(channel, false)
+		writer, reader, err := sshChannelToFileDescriptors(channel)
+		if err != nil {
+			fmt.Println("failed to make file descriptions for the ssh.Channel ", err)
+			return
+		}
+
+		screen, err := gc.NewTerm("xterm", writer, reader)
+		if err != nil {
+			fmt.Println("failed to start new curses terminal", err)
+			return
+		}
+		fmt.Println("started new curses terminal")
+
+		gm.HandleChannel(screen, false)
 	}
+}
+
+func sshChannelToFileDescriptors(channel ssh.Channel) (stdoutWriter *os.File, stdinReader *os.File, err error) {
+	stdoutReader, stdoutWriter, err := os.Pipe()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	go func() {
+		b := make([]byte, 1024)
+		for {
+
+			n, err := stdoutReader.Read(b)
+			if err != nil {
+				fmt.Println("reading from stdout stopped")
+				break
+			}
+
+			n, err = channel.Write(b[0:n])
+			if err != nil {
+				fmt.Println("writing to the channel, stopped")
+				break
+			}
+		}
+	}()
+
+	stdinReader, stdinWriter, err := os.Pipe()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	go func() {
+		b := make([]byte, 1024)
+		for {
+			n, err := channel.Read(b)
+			if err != nil {
+				fmt.Println("reading from the channel, stopped")
+				break
+			}
+
+			n, err = stdinWriter.Write(b[0:n])
+			if err != nil {
+				fmt.Println("writing to stdin stopped")
+			}
+		}
+	}()
+
+	return stdoutWriter, stdinReader, nil
 }
 
 func port(opt, env, def string) string {
@@ -88,6 +150,14 @@ func port(opt, env, def string) string {
 
 func main() {
 
+	/*
+		_, err := gc.Init()
+		if err != nil {
+			panic(err)
+		}
+		defer gc.End()
+	*/
+
 	var sshPortOpt string
 	var httpPortOpt string
 	var singlePlayer bool
@@ -98,8 +168,11 @@ func main() {
 
 	if singlePlayer {
 		gm := NewGameManager()
-		tc := NewTermChannel()
-		gm.HandleChannel(tc, true)
+		s, err := gc.NewTerm("xterm", os.Stdout, os.Stdin)
+		if err != nil {
+			panic("failed to create local terminal")
+		}
+		gm.HandleChannel(s, true)
 	} else {
 
 		sshPort := port(sshPortOpt, sshPortEnv, defaultSshPort)
